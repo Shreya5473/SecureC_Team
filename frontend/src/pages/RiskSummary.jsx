@@ -78,7 +78,8 @@ const RiskSummary = () => {
           {hasData && (
             <button
               className="btn-primary"
-              onClick={() => alert('Export: Would generate PDF from current analysis.')}
+              onClick={() => window.print()}
+              title="Export current analysis as PDF"
             >
               <Download size={16} />
               Export PDF

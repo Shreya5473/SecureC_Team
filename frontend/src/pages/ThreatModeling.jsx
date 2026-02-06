@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Play, FileSearch } from 'lucide-react';
+import { Play, FileSearch, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
 import { useAnalysis } from '../context/AnalysisContext';
 import { filterByAgent } from '../utils/findingsHelpers';
 import { AGENT_NAMES } from '../constants/agents';
@@ -17,6 +18,65 @@ const ThreatModeling = () => {
 
   const selected = threatFindings[selectedIdx];
   const hasData = threatFindings.length > 0;
+
+  const handleExportAnalysis = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let y = 20;
+
+    // Title
+    doc.setFontSize(22);
+    doc.text("Threat Modeling Analysis", margin, y);
+    y += 10;
+
+    // Metadata
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+    y += 15;
+
+    // Finding Details
+    doc.setFontSize(16);
+    doc.setTextColor(0);
+    doc.text(selected.finding_type || 'Threat Finding', margin, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    doc.setTextColor(50);
+    doc.text(`Severity: ${(selected.severity || 'MEDIUM').toUpperCase()}`, margin, y);
+    y += 6;
+    doc.text(`Location: ${selected.location || 'Unknown'}`, margin, y);
+    y += 6;
+    doc.text(`Confidence: ${selected.confidence ? (selected.confidence * 100).toFixed(0) + '%' : 'N/A'}`, margin, y);
+    y += 10;
+
+    // Sections
+    const addSection = (title, content) => {
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, margin, y);
+      y += 6;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(60);
+      const lines = doc.splitTextToSize(content || 'No content provided.', pageWidth - 40);
+      doc.text(lines, margin, y);
+      y += (lines.length * 4) + 10;
+    };
+
+    addSection("Description", selected.description);
+    if (selected.suggestion) {
+      addSection("Suggested Remediation", selected.suggestion);
+    }
+
+    addSection("Additional Context", `Derived From: ${selected.derived_from || 'Direct Analysis'}\nAgent: ${selected.agent_name || 'Threat Modeler'}`);
+
+    doc.save(`Threat_Analysis_${selected.finding_type?.replace(/\s+/g, '_') || 'Finding'}.pdf`);
+  };
 
   if (!hasData) {
     return (
@@ -106,9 +166,13 @@ const ThreatModeling = () => {
                   </div>
                 </div>
                 <div className="detail-actions">
-                  <button className="btn-text-sm">Assign</button>
-                  <button className="btn-text-sm">Mark False Positive</button>
-                  <button className="btn-primary sm">View Full Analysis</button>
+                  <button
+                    className="btn-primary sm"
+                    onClick={handleExportAnalysis}
+                    title="Export complete analysis as PDF"
+                  >
+                    Export Analysis
+                  </button>
                 </div>
               </div>
               <div className="detail-content-grid">

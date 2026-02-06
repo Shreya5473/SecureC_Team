@@ -10,6 +10,7 @@ import Overview from './pages/Overview';
 import SocAlerts from './pages/SocAlerts';
 import ArtifactInput from './pages/ArtifactInput';
 import MLAnalytics from './pages/MLAnalytics';
+import AIWaf from './pages/AIWaf';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
             <Route path="/soc-alerts" element={<SocAlerts />} />
             <Route path="/add-artifact" element={<ArtifactInput />} />
             <Route path="/ml-analytics" element={<MLAnalytics />} />
+            <Route path="/ai-waf" element={<AIWaf />} />
           </Routes>
         </Layout>
       </BrowserRouter>

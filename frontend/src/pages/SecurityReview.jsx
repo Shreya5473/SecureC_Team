@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
   Play,
-  Filter,
   Download,
-  Ticket,
   FileText,
   FileSearch,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
 import { useAnalysis } from '../context/AnalysisContext';
 import { filterByAgent } from '../utils/findingsHelpers';
 import { AGENT_NAMES } from '../constants/agents';
@@ -24,6 +23,55 @@ const SecurityReview = () => {
 
   const selected = securityFindings[selectedIdx];
   const hasData = securityFindings.length > 0;
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let y = 20;
+
+    // Title
+    doc.setFontSize(22);
+    doc.text("Security Review Report", margin, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+    y += 20;
+
+    // Findings
+    securityFindings.forEach((f, i) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${i + 1}. ${f.finding_type} [${(f.severity || 'MEDIUM').toUpperCase()}]`, margin, y);
+      y += 7;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Location: ${f.location || 'Unknown'}`, margin, y);
+      y += 7;
+
+      const descLines = doc.splitTextToSize(`Description: ${f.description}`, pageWidth - 40);
+      doc.text(descLines, margin, y);
+      y += (descLines.length * 4) + 5;
+
+      if (f.suggestion) {
+        const fixLines = doc.splitTextToSize(`Suggested Fix: ${f.suggestion}`, pageWidth - 40);
+        doc.setTextColor(0, 100, 0);
+        doc.text(fixLines, margin, y);
+        doc.setTextColor(0);
+        y += (fixLines.length * 4) + 10;
+      } else {
+        y += 5;
+      }
+    });
+
+    doc.save(`Security_Review_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   if (!hasData) {
     return (
@@ -84,8 +132,14 @@ const SecurityReview = () => {
       <div className="mb-4 flex justify-between items-center">
         <h3 className="font-semibold text-lg">Identified Findings (Logic Auditor)</h3>
         <div className="flex gap-2">
-          <button className="btn-secondary sm"><Filter size={14} /> Filter</button>
-          <button className="btn-secondary sm"><Download size={14} /> Export</button>
+          {/* Removed Filter button */}
+          <button
+            className="btn-secondary sm"
+            onClick={handleExportPDF}
+            title="Export findings as PDF"
+          >
+            <Download size={14} /> Export PDF
+          </button>
         </div>
       </div>
 
@@ -129,8 +183,7 @@ const SecurityReview = () => {
           <div className="detail-panel-header">
             <h3>{selected.finding_type || 'Security Finding'}</h3>
             <div className="flex gap-2">
-              <button className="btn-secondary sm"><FileText size={14} /> View Logs</button>
-              <button className="btn-secondary sm"><Ticket size={14} /> Assign Ticket</button>
+              {/* Removed View Logs and Assign Ticket buttons */}
             </div>
           </div>
           <div className="detail-panel-grid">

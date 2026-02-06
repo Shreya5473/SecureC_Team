@@ -1,14 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Share2,
-  Wrench,
+  Download,
   Zap,
   Flame,
   Shield,
   Ticket,
   FileSearch,
+  X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
 import { useAnalysis } from '../context/AnalysisContext';
 import { filterBySeverity } from '../utils/findingsHelpers';
 import './Remediation.css';
@@ -16,6 +17,11 @@ import './Remediation.css';
 const Remediation = () => {
   const { analysisReport } = useAnalysis();
   const navigate = useNavigate();
+
+  // Modal State
+  const [showSlackModal, setShowSlackModal] = useState(false);
+  const [selectedFinding, setSelectedFinding] = useState(null);
+  const [slackChannel, setSlackChannel] = useState('#security-alerts');
 
   const remediationGroups = useMemo(() => {
     if (!analysisReport?.findings?.length) {
@@ -36,6 +42,54 @@ const Remediation = () => {
   const hasData = remediationGroups.highImpact.length > 0 ||
     remediationGroups.quickWins.length > 0 ||
     remediationGroups.longTerm.length > 0;
+
+  const getSlackMessage = (finding) => {
+    if (!finding) return '';
+    const severity = (finding.severity || 'medium').toUpperCase();
+    const severityEmoji = severity === 'CRITICAL' || severity === 'HIGH' ? '🚨' : severity === 'MEDIUM' ? '⚠️' : 'ℹ️';
+
+    return `${severityEmoji} ${severity} Security Finding
+${finding.finding_type || 'Security Finding'}
+
+Component: ${finding.location || 'Unknown'}
+Action: ${finding.suggestion?.slice(0, 100) || 'Review details in SecureC'}...
+
+🔗 View in SecureC`;
+  };
+
+  const handleSendToSlack = async () => {
+    if (!selectedFinding) return;
+
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/slack/send-ticket', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          finding_type: selectedFinding.finding_type || 'Security Finding',
+          severity: selectedFinding.severity || 'medium',
+          description: selectedFinding.description || 'No description available',
+          location: selectedFinding.location,
+          suggestion: selectedFinding.suggestion,
+          agent_name: selectedFinding.agent_name,
+          derived_from: selectedFinding.derived_from,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setShowSlackModal(false);
+        alert('✓ Slack ticket sent successfully to DM!');
+      } else {
+        throw new Error(data.detail || 'Failed to send Slack ticket');
+      }
+    } catch (error) {
+      console.error('Error sending Slack ticket:', error);
+      alert(`✗ Failed to send Slack ticket: ${error.message}`);
+    }
+  };
 
   const renderFindingCard = (finding, idx) => (
     <div className="finding-card" key={idx}>
@@ -79,9 +133,16 @@ const Remediation = () => {
             <span className="derived-from-badge">{finding.derived_from}</span>
           </div>
         )}
-        <button className="btn-jira" onClick={() => alert('Jira: Would create ticket.')}>
+        <button
+          className="btn-jira"
+          onClick={() => {
+            setSelectedFinding(finding);
+            setShowSlackModal(true);
+          }}
+          title="Create Slack Ticket"
+        >
           <Ticket size={14} />
-          Create Jira Ticket
+          Create Slack Ticket
         </button>
       </div>
     </div>
@@ -116,13 +177,89 @@ const Remediation = () => {
           <h1 className="page-title">Remediation Plan</h1>
         </div>
         <div className="header-actions">
-          <button className="btn-secondary" onClick={() => alert('Share: Would generate shareable plan.')}>
-            <Share2 size={16} />
-            Share Plan
-          </button>
-          <button className="btn-primary" onClick={() => alert('Auto-Fix: Would apply safe fixes.')}>
-            <Wrench size={16} />
-            Auto-Fix Safe Items
+          <button
+            className="btn-primary"
+            onClick={() => {
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 20;
+              let y = 20;
+
+              // Title
+              doc.setFontSize(22);
+              doc.setTextColor(0, 0, 0);
+              doc.text("SecureC Remediation Plan", margin, y);
+              y += 10;
+
+              // Metadata
+              doc.setFontSize(10);
+              doc.setTextColor(100, 100, 100);
+              doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+              y += 15;
+
+              // High Impact Section
+              if (remediationGroups.highImpact.length > 0) {
+                doc.setFontSize(16);
+                doc.setTextColor(220, 53, 69); // Red
+                doc.text(`High Impact (${remediationGroups.highImpact.length})`, margin, y);
+                y += 10;
+
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                remediationGroups.highImpact.forEach((f, i) => {
+                  if (y > 270) { doc.addPage(); y = 20; }
+
+                  doc.setFont("helvetica", "bold");
+                  doc.text(`${i + 1}. ${f.finding_type} [${(f.severity || 'HIGH').toUpperCase()}]`, margin, y);
+                  y += 5;
+
+                  doc.setFont("helvetica", "normal");
+                  doc.text(`Location: ${f.location || 'Unknown'}`, margin + 5, y);
+                  y += 5;
+
+                  const descLines = doc.splitTextToSize(`Fix: ${f.suggestion || 'See details'}`, pageWidth - 40);
+                  doc.text(descLines, margin + 5, y);
+                  y += (descLines.length * 4) + 5;
+                });
+                y += 10;
+              }
+
+              // Quick Wins Section
+              if (remediationGroups.quickWins.length > 0) {
+                if (y > 250) { doc.addPage(); y = 20; }
+
+                doc.setFontSize(16);
+                doc.setTextColor(40, 167, 69); // Green
+                doc.text(`Quick Wins (${remediationGroups.quickWins.length})`, margin, y);
+                y += 10;
+
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                remediationGroups.quickWins.forEach((f, i) => {
+                  if (y > 270) { doc.addPage(); y = 20; }
+
+                  doc.setFont("helvetica", "bold");
+                  doc.text(`${i + 1}. ${f.finding_type} [${(f.severity || 'MEDIUM').toUpperCase()}]`, margin, y);
+                  y += 5;
+
+                  doc.setFont("helvetica", "normal");
+                  doc.text(`Location: ${f.location || 'Unknown'}`, margin + 5, y);
+                  y += 5;
+
+                  const descLines = doc.splitTextToSize(`Fix: ${f.suggestion || 'See details'}`, pageWidth - 40);
+                  doc.text(descLines, margin + 5, y);
+                  y += (descLines.length * 4) + 5;
+                });
+              }
+
+              doc.save(`SecureC_Remediation_Plan_${new Date().toISOString().split('T')[0]}.pdf`);
+
+              alert('✓ Remediation plan exported as PDF!');
+            }}
+            title="Download remediation plan as PDF"
+          >
+            <Download size={16} />
+            Export Plan as PDF
           </button>
         </div>
       </header>
@@ -170,6 +307,35 @@ const Remediation = () => {
           </div>
           {remediationGroups.longTerm.map(renderFindingCard)}
         </section>
+      )}
+
+      {/* Slack Modal */}
+      {showSlackModal && selectedFinding && (
+        <div className="modal-overlay" onClick={() => setShowSlackModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Send to Slack</h3>
+              <button className="close-btn" onClick={() => setShowSlackModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Message Preview</label>
+                <div className="message-preview">
+                  {getSlackMessage(selectedFinding)}
+                </div>
+              </div>
+              <p className="text-xs text-muted" style={{ marginTop: '10px' }}>
+                This ticket will be sent as a direct message to the configured Slack user.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowSlackModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={handleSendToSlack}>Send to Slack</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

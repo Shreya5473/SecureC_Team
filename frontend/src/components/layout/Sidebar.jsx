@@ -9,12 +9,14 @@ import {
   ShieldCheck,
   FilePlus,
   Brain,
+  Shield,
 } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
   const navItems = [
     { to: '/add-artifact', icon: FilePlus, label: 'Add Artifact' },
+    { to: '/ai-waf', icon: Shield, label: 'AI WAF' },
     { to: '/ml-analytics', icon: Brain, label: 'ML Analytics' },
     { to: '/threat-modeling', icon: ShieldAlert, label: 'Threat Modeling' },
     { to: '/security-review', icon: ScanSearch, label: 'Security Review' },
@@ -29,7 +31,7 @@ const Sidebar = () => {
         <div className="logo-icon">
           <ShieldCheck size={20} color="white" fill="#22d3ee" />
         </div>
-        <span className="logo-text">SecGuard AI</span>
+        <span className="logo-text">SecureC</span>
       </div>
 
       <nav className="sidebar-nav">

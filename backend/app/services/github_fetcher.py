@@ -6,6 +6,7 @@ import re
 import uuid
 import logging
 from typing import Dict, Any, List, Optional
+import os
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ MAX_FILES = 50
 MAX_FILE_SIZE = 500_000  # bytes per file
 LANGUAGE_WHITELIST = {"python", "javascript", "typescript", "go", "rust", "java", "kotlin", "ruby", "php", "c", "cpp", "csharp", "json", "yaml", "yml", "md", "txt", "sh", "sql"}
 SUPPORTED_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".c", ".cpp", ".h", ".cs", ".json", ".yaml", ".yml", ".md", ".txt", ".sh", ".sql", ".html", ".css"}
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
 def _parse_github_url(url: str) -> Optional[Dict[str, str]]:
@@ -25,11 +27,11 @@ def _parse_github_url(url: str) -> Optional[Dict[str, str]]:
     # https://github.com/org/repo/commit/sha
     # https://github.com/org/repo/pull/123
     patterns = [
-        (r"github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)$", "file"),
-        (r"github\.com/([^/]+)/([^/]+)/tree/([^/]+)/(.*)$", "tree"),
-        (r"github\.com/([^/]+)/([^/]+)/commit/([a-f0-9]+)", "commit"),
-        (r"github\.com/([^/]+)/([^/]+)/pull/(\d+)", "pull"),
-        (r"github\.com/([^/]+)/([^/]+)$", "repo"),
+        (r"(?:https?://)?(?:www\.)?github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)$", "file"),
+        (r"(?:https?://)?(?:www\.)?github\.com/([^/]+)/([^/]+)/tree/([^/]+)/(.*)$", "tree"),
+        (r"(?:https?://)?(?:www\.)?github\.com/([^/]+)/([^/]+)/commit/([a-f0-9]+)", "commit"),
+        (r"(?:https?://)?(?:www\.)?github\.com/([^/]+)/([^/]+)/pull/(\d+)", "pull"),
+        (r"(?:https?://)?(?:www\.)?github\.com/([^/]+)/([^/]+)/?$", "repo"),
     ]
     for pat, kind in patterns:
         m = re.match(pat, url, re.I)
@@ -57,8 +59,11 @@ def _get_file_extension(path: str) -> str:
 def _fetch_file_content(org: str, repo: str, branch: str, path: str) -> Optional[str]:
     """Fetch raw file content from GitHub."""
     url = f"https://raw.githubusercontent.com/{org}/{repo}/{branch}/{path}"
+    headers = {"User-Agent": "ProjectSentinel-AI/1.0"}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
     try:
-        with httpx.Client(timeout=30, follow_redirects=True) as client:
+        with httpx.Client(headers=headers, timeout=30, follow_redirects=True) as client:
             r = client.get(url)
             if r.status_code != 200:
                 return None
@@ -74,8 +79,11 @@ def _fetch_file_content(org: str, repo: str, branch: str, path: str) -> Optional
 def _fetch_repo_tree(org: str, repo: str, branch: str = "main") -> List[Dict[str, str]]:
     """Fetch repo file list via GitHub API (no auth for public repos)."""
     url = f"https://api.github.com/repos/{org}/{repo}/git/trees/{branch}?recursive=1"
+    headers = {"User-Agent": "ProjectSentinel-AI/1.0", "Accept": "application/vnd.github.v3+json"}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
     try:
-        with httpx.Client(timeout=30, headers={"Accept": "application/vnd.github.v3+json"}) as client:
+        with httpx.Client(headers=headers, timeout=30) as client:
             r = client.get(url)
             if r.status_code != 200:
                 # try master
@@ -103,6 +111,8 @@ def fetch_github_artifact(url: str) -> Dict[str, Any]:
         raise ValueError(f"Invalid GitHub URL: {url}")
 
     org, repo = parsed["org"], parsed["repo"]
+    if repo.endswith(".git"):
+        repo = repo[:-4]
     repo_slug = f"{org}/{repo}"
     files: List[Dict[str, Any]] = []
     branch = "main"

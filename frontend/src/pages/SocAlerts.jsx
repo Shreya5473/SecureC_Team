@@ -14,6 +14,8 @@ const SocAlerts = () => {
   const { analysisReport } = useAnalysis();
   const navigate = useNavigate();
   const [selectedIdx, setSelectedIdx] = useState(0);
+  // Track resolved state for findings 
+  const [resolvedFindings, setResolvedFindings] = useState({});
 
   const socFindings = useMemo(() => {
     return filterByAgent(analysisReport?.findings || [], AGENT_NAMES.SOC_INTELLIGENCE);
@@ -28,6 +30,13 @@ const SocAlerts = () => {
     if (sev === 'medium') return 'orange';
     if (sev === 'low') return 'green';
     return 'blue';
+  };
+
+  const markResolved = (idx) => {
+    setResolvedFindings(prev => ({
+      ...prev,
+      [idx]: true
+    }));
   };
 
   if (!hasData) {
@@ -58,10 +67,7 @@ const SocAlerts = () => {
           <span className="text-muted">Detection & Response / Alerts</span>
           <h1 className="page-title">SOC Intelligence — {socFindings.length} findings</h1>
         </div>
-        <div className="header-actions">
-          <button className="btn-secondary"><Settings size={14} /> Feed Settings</button>
-          <button className="btn-secondary"><XCircle size={14} /> Dismiss All</button>
-        </div>
+        {/* Buttons removed as requested: Feed Settings, Dismiss All, etc. */}
       </div>
 
       {socFindings.length > 1 && (
@@ -94,6 +100,7 @@ const SocAlerts = () => {
                     {(f.severity || 'info').toUpperCase()}
                   </span>
                 </div>
+                {resolvedFindings[idx] && <span className="text-xs text-green-400 ml-auto">Fixed</span>}
               </div>
               <div className="alert-title">{f.finding_type || 'SOC Finding'}</div>
               <div className="alert-meta-bottom">
@@ -129,8 +136,14 @@ const SocAlerts = () => {
                 )}
               </div>
               <div className="investigation-footer">
-                <button className="btn-secondary">View Raw Logs</button>
-                <button className="btn-primary">Mark as Resolved</button>
+                {/* Removed View Raw Logs button */}
+                <button
+                  className={resolvedFindings[selectedIdx] ? "btn-secondary" : "btn-primary"}
+                  onClick={() => markResolved(selectedIdx)}
+                  disabled={resolvedFindings[selectedIdx]}
+                >
+                  {resolvedFindings[selectedIdx] ? "Done" : "Mark as Resolved"}
+                </button>
               </div>
             </>
           )}

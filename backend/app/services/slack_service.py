@@ -50,3 +50,31 @@ def send_soc_alert(message: dict) -> bool:
     except Exception as e:
         logger.error(f"Slack error: {e}", exc_info=True)
         return False
+
+
+def send_dm_alert(message: dict, user_id: str = None) -> bool:
+    """Send a DM alert to a specific Slack user. Handles failures safely (log, don't crash)."""
+    global _client
+    if _client is None:
+        _client = _get_client()
+    if not _client:
+        logger.warning("SLACK_BOT_TOKEN not set. Slack DM notifications disabled.")
+        return False
+
+    from app.core.config import settings
+    target_user = user_id or settings.SLACK_USER_ID or os.getenv("SLACK_USER_ID")
+    if not target_user:
+        logger.warning("SLACK_USER_ID not set. Slack DM notifications disabled.")
+        return False
+
+    try:
+        _client.chat_postMessage(
+            channel=target_user,  # For DMs, use user ID as channel
+            text=message.get("text", "Security ticket"),
+            blocks=message.get("blocks", []),
+        )
+        logger.info(f"Slack DM sent successfully to user {target_user}")
+        return True
+    except Exception as e:
+        logger.error(f"Slack DM error: {e}", exc_info=True)
+        return False
