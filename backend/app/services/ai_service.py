@@ -51,7 +51,8 @@ class AIService:
                 try:
                     chat_completion = await self.client.chat.completions.create(
                         model=self.model_name,
-                        messages=messages
+                        messages=messages,
+                        temperature=0,  # Ensure deterministic results
                     )
                     response = chat_completion
                     break

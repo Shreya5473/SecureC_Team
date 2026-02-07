@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from app.agents.input_guard_agent import InputGuardAgent
 from app.agents.output_guard_agent import OutputGuardAgent
 from app.agents.behavior_guard_agent import BehaviorGuardAgent
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ async def analyze_input(request: InputGuardRequest):
         metadata = {
             "artifact_type": request.artifact_type,
             "source": request.source,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         waf_event = await input_guard.analyze(request.user_input, metadata)
@@ -86,7 +86,7 @@ async def analyze_output(request: OutputGuardRequest):
         context = {
             "agent_name": request.agent_name,
             "query_type": request.query_type,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         waf_event = await output_guard.analyze(request.ai_output, context)
@@ -121,7 +121,7 @@ async def analyze_behavior(request: BehaviorGuardRequest):
             "action_type": request.action_type,
             "action_details": request.action_details,
             "resource_requested": request.resource_requested,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         policy_context = request.policy_context or "Standard security policies apply"
