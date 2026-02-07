@@ -165,15 +165,6 @@ const ThreatModeling = () => {
                     <span>Location: {selected.location || '—'}</span>
                   </div>
                 </div>
-                <div className="detail-actions">
-                  <button
-                    className="btn-primary sm"
-                    onClick={handleExportAnalysis}
-                    title="Export complete analysis as PDF"
-                  >
-                    Export Analysis
-                  </button>
-                </div>
               </div>
               <div className="detail-content-grid">
                 <div className="analysis-panel" style={{ gridColumn: '1 / -1' }}>

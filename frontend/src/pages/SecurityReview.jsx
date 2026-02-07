@@ -131,16 +131,6 @@ const SecurityReview = () => {
 
       <div className="mb-4 flex justify-between items-center">
         <h3 className="font-semibold text-lg">Identified Findings (Logic Auditor)</h3>
-        <div className="flex gap-2">
-          {/* Removed Filter button */}
-          <button
-            className="btn-secondary sm"
-            onClick={handleExportPDF}
-            title="Export findings as PDF"
-          >
-            <Download size={14} /> Export PDF
-          </button>
-        </div>
       </div>
 
       <div className="findings-table-container">

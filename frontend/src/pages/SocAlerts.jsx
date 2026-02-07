@@ -135,16 +135,6 @@ const SocAlerts = () => {
                   </div>
                 )}
               </div>
-              <div className="investigation-footer">
-                {/* Removed View Raw Logs button */}
-                <button
-                  className={resolvedFindings[selectedIdx] ? "btn-secondary" : "btn-primary"}
-                  onClick={() => markResolved(selectedIdx)}
-                  disabled={resolvedFindings[selectedIdx]}
-                >
-                  {resolvedFindings[selectedIdx] ? "Done" : "Mark as Resolved"}
-                </button>
-              </div>
             </>
           )}
         </div>

@@ -19,7 +19,15 @@ logger = logging.getLogger(__name__)
 def _get_client():
     from app.core.config import settings
     t = settings.SLACK_BOT_TOKEN or os.getenv("SLACK_BOT_TOKEN")
-    return WebClient(token=t) if t else None
+    if not t:
+        return None
+    
+    # SSL Fix for local development environments
+    import ssl
+    import certifi
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    
+    return WebClient(token=t, ssl=ssl_context)
 
 
 _client = None
@@ -68,12 +76,25 @@ def send_dm_alert(message: dict, user_id: str = None) -> bool:
         return False
 
     try:
+        # Step 1: Open a DM channel with the user using conversations.open
+        logger.info(f"Opening DM channel with user {target_user}")
+        dm_response = _client.conversations_open(users=target_user)
+        
+        if not dm_response.get("ok"):
+            logger.error(f"Failed to open DM channel: {dm_response.get('error', 'Unknown error')}")
+            return False
+        
+        # Step 2: Get the DM channel ID from the response
+        dm_channel_id = dm_response["channel"]["id"]
+        logger.info(f"DM channel opened successfully: {dm_channel_id}")
+        
+        # Step 3: Send the message to the DM channel
         _client.chat_postMessage(
-            channel=target_user,  # For DMs, use user ID as channel
+            channel=dm_channel_id,  # Use the DM channel ID (starts with 'D')
             text=message.get("text", "Security ticket"),
             blocks=message.get("blocks", []),
         )
-        logger.info(f"Slack DM sent successfully to user {target_user}")
+        logger.info(f"Slack DM sent successfully to user {target_user} via channel {dm_channel_id}")
         return True
     except Exception as e:
         logger.error(f"Slack DM error: {e}", exc_info=True)
