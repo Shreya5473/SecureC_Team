@@ -262,9 +262,69 @@ const AIWaf = () => {
                         <h2 className="section-title">🔒 Output Guard Agent</h2>
                         <p className="section-subtitle">AI outputs sanitized before user delivery</p>
                     </div>
+                    <div className="stats-mini">
+                        <div className="stat-item">
+                            <span className="stat-value">{wafEvents.outputGuard.length}</span>
+                            <span className="stat-label">Analyzed</span>
+                        </div>
+                    </div>
                 </div>
-                {/* Simplified for brevity - in real usage would list events */}
-                <p style={{ padding: '20px', color: '#8b949e' }}>Output guard events found...</p>
+
+                <div className="events-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Original Output</th>
+                                <th>Detection Type</th>
+                                <th>Confidence</th>
+                                <th>Action</th>
+                                <th>Severity</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {wafEvents.outputGuard.map((event, idx) => (
+                                <tr key={idx} onClick={() => setSelectedEvent({ ...event, type: 'output' })}>
+                                    <td className="timestamp-cell">{new Date(event.timestamp).toLocaleTimeString()}</td>
+                                    <td className="input-cell">
+                                        <div className="input-preview">{event.originalOutput}</div>
+                                    </td>
+                                    <td>
+                                        <span className="detection-type">{event.detectionType}</span>
+                                    </td>
+                                    <td>
+                                        <div className="confidence-bar">
+                                            <div
+                                                className="confidence-fill"
+                                                style={{ width: `${event.confidence * 100}%` }}
+                                            ></div>
+                                            <span className="confidence-text">{(event.confidence * 100).toFixed(0)}%</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className={`action-badge ${getActionBadgeClass(event.action)}`}>
+                                            {event.action}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div className="severity-indicator">
+                                            <div className={`status-dot ${getSeverityClass(event.severity)}`}></div>
+                                            <span className={`severity-text ${getSeverityClass(event.severity)}`}>
+                                                {event.severity?.toUpperCase()}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button className="btn-view-details">
+                                            <Eye size={14} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         );
     };
