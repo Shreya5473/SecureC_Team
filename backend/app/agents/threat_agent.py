@@ -5,12 +5,29 @@ from app.services.ai_service import ai_service
 
 logger = logging.getLogger(__name__)
 
+# Valid severity values for safe parsing
+VALID_SEVERITIES = {"critical", "high", "medium", "low", "info"}
+
+
+def _safe_parse_severity(severity_str: str) -> VulnerabilitySeverity:
+    """Safely parse severity string, defaulting to 'medium' if invalid."""
+    normalized = (severity_str or "medium").lower().strip()
+    if normalized not in VALID_SEVERITIES:
+        logger.warning(f"Invalid severity '{severity_str}', defaulting to 'medium'")
+        normalized = "medium"
+    return VulnerabilitySeverity(normalized)
+
+
 class ThreatAgent:
     """
     The Architect (Threat Modeler): Analyzes system designs.
     Identifies 'Trust Boundaries'—wherever user data meets a sensitive trading engine.
     """
     async def analyze(self, content: str) -> List[AgentFinding]:
+        if not content or not content.strip():
+            logger.warning("ThreatAgent received empty content")
+            return []
+            
         system_prompt = """
         You are an expert Threat Modeling Agent (The Architect).
         Your goal is to analyze system architecture descriptions and identify security design flaws.
@@ -52,14 +69,23 @@ class ThreatAgent:
                 if isinstance(results[0], dict) and "findings" in results[0]:
                     items = results[0]["findings"]
                 
+                # Validate items is a list
+                if not isinstance(items, list):
+                    logger.error(f"Expected list of findings, got {type(items)}")
+                    return []
+                
                 for item in items:
+                    if not isinstance(item, dict):
+                        logger.warning(f"Skipping non-dict finding: {type(item)}")
+                        continue
+                        
                     findings.append(AgentFinding(
                         agent_name="Threat Modeler",
-                        finding_type=item.get("finding_type", "Unknown Threat"),
-                        description=item.get("description", ""),
-                        severity=VulnerabilitySeverity(item.get("severity", "medium").lower()),
-                        location=item.get("location", "Architecture"),
-                        suggestion=item.get("suggestion", "")
+                        finding_type=str(item.get("finding_type", "Unknown Threat")),
+                        description=str(item.get("description", "")),
+                        severity=_safe_parse_severity(item.get("severity")),
+                        location=str(item.get("location", "Architecture")),
+                        suggestion=str(item.get("suggestion", ""))
                     ))
             
             return findings

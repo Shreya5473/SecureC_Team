@@ -1,8 +1,44 @@
 from app.services.ai_service import ai_service
-from typing import List, Dict, Any
+from typing import Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Valid actions for input guard
+VALID_ACTIONS = {"Blocked", "Sanitized", "Allowed"}
+VALID_SEVERITIES = {"critical", "high", "medium", "low"}
+
+
+def _safe_parse_confidence(confidence: Any) -> float:
+    """Safely parse confidence to float, clamping to 0-1 range."""
+    try:
+        if isinstance(confidence, (int, float)):
+            return max(0.0, min(1.0, float(confidence)))
+        if isinstance(confidence, str):
+            return max(0.0, min(1.0, float(confidence)))
+    except (ValueError, TypeError):
+        pass
+    return 0.5  # Default middle ground
+
+
+def _safe_parse_action(action: Any) -> str:
+    """Safely parse action, defaulting to 'Allowed' if invalid."""
+    if isinstance(action, str):
+        # Normalize case for matching
+        for valid in VALID_ACTIONS:
+            if action.lower() == valid.lower():
+                return valid
+    return "Allowed"
+
+
+def _safe_parse_severity(severity: Any) -> str:
+    """Safely parse severity, defaulting to 'low' if invalid."""
+    if isinstance(severity, str):
+        normalized = severity.lower().strip()
+        if normalized in VALID_SEVERITIES:
+            return normalized
+    return "low"
+
 
 class InputGuardAgent:
     """
@@ -35,6 +71,21 @@ class InputGuardAgent:
             - modificationSummary: What was changed (if sanitized)
             - sanitizedInput: The cleaned input (if sanitized)
         """
+        # Handle empty/None input
+        if not user_input:
+            return {
+                "timestamp": metadata.get('timestamp') if metadata else None,
+                "originalInput": "",
+                "detectionType": "Empty Input",
+                "confidence": 1.0,
+                "action": "Allowed",
+                "severity": "low",
+                "reason": "Empty input received - nothing to analyze",
+                "modificationSummary": "",
+                "sanitizedInput": ""
+            }
+        
+        metadata = metadata or {}
         
         system_prompt = """You are an AI Web Application Firewall (WAF) Input Guard Agent.
 
@@ -88,8 +139,8 @@ OUTPUT REQUIREMENTS:
 ---
 
 METADATA:
-- Input Type: {metadata.get('artifact_type', 'unknown') if metadata else 'unknown'}
-- Source: {metadata.get('source', 'direct') if metadata else 'direct'}
+- Input Type: {metadata.get('artifact_type', 'unknown')}
+- Source: {metadata.get('source', 'direct')}
 
 Analyze this input for security threats and provide your assessment."""
 
@@ -99,10 +150,12 @@ Analyze this input for security threats and provide your assessment."""
                 response_schema=response_schema
             )
             
-            if not results or len(results) == 0:
+            if not results or not isinstance(results, list) or len(results) == 0:
                 logger.warning("Input Guard Agent returned no results")
                 # Default to allowing with low confidence
                 return {
+                    "timestamp": metadata.get('timestamp'),
+                    "originalInput": user_input[:500],
                     "detectionType": "Analysis Failed",
                     "confidence": 0.5,
                     "action": "Allowed",
@@ -114,17 +167,31 @@ Analyze this input for security threats and provide your assessment."""
             
             result = results[0]
             
-            # Ensure all required fields exist
+            if not isinstance(result, dict):
+                logger.error(f"Expected dict result, got {type(result)}")
+                return {
+                    "timestamp": metadata.get('timestamp'),
+                    "originalInput": user_input[:500],
+                    "detectionType": "Parse Error",
+                    "confidence": 0.5,
+                    "action": "Allowed",
+                    "severity": "low",
+                    "reason": "Failed to parse AI response - defaulting to allow",
+                    "modificationSummary": "",
+                    "sanitizedInput": user_input
+                }
+            
+            # Ensure all required fields exist with safe parsing
             waf_event = {
-                "timestamp": metadata.get('timestamp') if metadata else None,
+                "timestamp": metadata.get('timestamp'),
                 "originalInput": user_input[:500],  # Truncate for display
-                "detectionType": result.get("detectionType", "Unknown"),
-                "confidence": float(result.get("confidence", 0.5)),
-                "action": result.get("action", "Allowed"),
-                "severity": result.get("severity", "low"),
-                "reason": result.get("reason", "No reason provided"),
-                "modificationSummary": result.get("modificationSummary", ""),
-                "sanitizedInput": result.get("sanitizedInput", user_input)
+                "detectionType": str(result.get("detectionType", "Unknown")),
+                "confidence": _safe_parse_confidence(result.get("confidence")),
+                "action": _safe_parse_action(result.get("action")),
+                "severity": _safe_parse_severity(result.get("severity")),
+                "reason": str(result.get("reason", "No reason provided")),
+                "modificationSummary": str(result.get("modificationSummary", "")),
+                "sanitizedInput": str(result.get("sanitizedInput", user_input))
             }
             
             logger.info(f"Input Guard: {waf_event['action']} - {waf_event['detectionType']} (confidence: {waf_event['confidence']})")
@@ -135,11 +202,13 @@ Analyze this input for security threats and provide your assessment."""
             logger.error(f"Input Guard Agent error: {e}")
             # Fail open with warning
             return {
+                "timestamp": metadata.get('timestamp') if metadata else None,
+                "originalInput": user_input[:500] if user_input else "",
                 "detectionType": "Error",
                 "confidence": 0.3,
                 "action": "Allowed",
                 "severity": "medium",
                 "reason": f"Analysis error: {str(e)}",
                 "modificationSummary": "",
-                "sanitizedInput": user_input
+                "sanitizedInput": user_input or ""
             }

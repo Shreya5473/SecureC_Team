@@ -17,8 +17,9 @@ import {
 } from 'recharts';
 import './MLAnalytics.css';
 
-const CHART_COLORS = ['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#ef4444', '#ec4899'];
-const PIE_COLORS = ['#22d3ee', '#a78bfa', '#f59e0b', '#10b981'];
+// Neon color palette matching the app theme (no purple)
+const CHART_COLORS = ['#22d3ee', '#ffb700', '#ff4d4d', '#00e676', '#06b6d4', '#ff7b00'];
+const PIE_COLORS = ['#22d3ee', '#ffb700', '#ff4d4d', '#00e676'];
 
 const MLAnalytics = () => {
   const { analysisReport } = useAnalysis();
@@ -94,11 +95,11 @@ const MLAnalytics = () => {
       ) : (
         <>
           {!hasSignals && (
-          <div className="ml-no-signals-banner">
-            <Activity size={20} />
-            <span>No anomalies detected. Charts show empty/zero. Paste code with security keywords (auth, password, token, sql) in Add Artifact to trigger ML signals.</span>
-          </div>
-        )}
+            <div className="ml-no-signals-banner">
+              <Activity size={20} />
+              <span>No anomalies detected. Charts show empty/zero. Paste code with security keywords (auth, password, token, sql) in Add Artifact to trigger ML signals.</span>
+            </div>
+          )}
 
           {/* Overview stats - always show when we have ml_signals */}
           <div className="ml-stats-row">
@@ -184,7 +185,7 @@ const MLAnalytics = () => {
                       <XAxis type="number" tick={{ fill: '#6e7681', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis type="category" dataKey="keyword" tick={{ fill: '#6e7681', fontSize: 11 }} axisLine={false} tickLine={false} width={70} />
                       <Tooltip contentStyle={chartTooltipStyle} />
-                      <Bar dataKey="count" fill="#a78bfa" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="count" fill="#ffb700" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

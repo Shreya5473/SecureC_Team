@@ -1,21 +1,59 @@
 import logging
 import json
-from typing import List, Dict
+from typing import List, Dict, Any
 from app.models.schemas import AgentFinding
 from app.services.ai_service import ai_service
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_parse_score(score: Any) -> int:
+    """Safely parse score to integer, clamping to 0-100 range."""
+    try:
+        if isinstance(score, (int, float)):
+            return max(0, min(100, int(score)))
+        if isinstance(score, str):
+            return max(0, min(100, int(float(score))))
+    except (ValueError, TypeError):
+        pass
+    return 50  # Default middle ground
+
+
+def _safe_parse_status(status: Any) -> str:
+    """Safely parse status, defaulting to NO-GO if invalid."""
+    if isinstance(status, str):
+        normalized = status.upper().strip()
+        if normalized in ("GO", "NO-GO"):
+            return normalized
+    return "NO-GO"
+
 
 class RiskAgent:
     """
     The Strategist (Risk Manager): Calculates overall risk.
     Aggregates all findings into a single 'Security Score' and risk narrative.
     """
-    async def analyze(self, findings: List[AgentFinding]) -> Dict:
+    async def analyze(self, findings: List[AgentFinding]) -> Dict[str, Any]:
         if not findings:
-            return {"overall_score": 100, "summary": "No findings detected. System appears secure.", "status": "GO"}
-            
-        findings_context = json.dumps([f.dict() for f in findings], default=str)
+            return {
+                "overall_score": 100,
+                "summary": "No findings detected. System appears secure.",
+                "status": "GO"
+            }
+        
+        # Convert findings to string for context
+        try:
+            findings_context = json.dumps(
+                [f.model_dump() if hasattr(f, "model_dump") else f.dict() for f in findings],
+                default=str
+            )
+        except Exception as e:
+            logger.error(f"Failed to serialize findings: {e}")
+            return {
+                "overall_score": 0,
+                "summary": "Risk analysis failed - unable to process findings.",
+                "status": "NO-GO"
+            }
         
         system_prompt = """
         You are an expert Risk Management Agent (the Strategist).
@@ -44,30 +82,24 @@ class RiskAgent:
             
             if results and isinstance(results, list) and len(results) > 0:
                 result = results[0]
-                return {
-                    "overall_score": result.get("overall_score", 0),
-                    "summary": result.get("summary", "Risk assessment complete."),
-                    "status": result.get("status", "NO-GO")
-                }
+                if isinstance(result, dict):
+                    return {
+                        "overall_score": _safe_parse_score(result.get("overall_score")),
+                        "summary": str(result.get("summary", "Risk assessment complete.")),
+                        "status": _safe_parse_status(result.get("status"))
+                    }
             
             # Fallback if parsing fails
-            return {"overall_score": 50, "summary": "Automated risk assessment passed but failed to parse details.", "status": "NO-GO"}
+            return {
+                "overall_score": 50,
+                "summary": "Automated risk assessment completed but failed to parse details.",
+                "status": "NO-GO"
+            }
             
         except Exception as e:
             logger.error(f"Risk analysis failed: {e}")
-            return {"overall_score": 0, "summary": "Risk analysis failed due to error.", "status": "NO-GO"}
-        
-        summary = f"System analysis complete. Identified {len(findings)} issues. " \
-                  f"Critical risks detected in trading logic." if score < 80 else "System appears healthy."
-
-        from datetime import datetime
-        import uuid
-        
-        return SecurityReport(
-            id=str(uuid.uuid4()),
-            timestamp=datetime.now(),
-            overall_score=score,
-            findings=findings,
-            summary=summary,
-            status=status
-        )
+            return {
+                "overall_score": 0,
+                "summary": "Risk analysis failed due to error.",
+                "status": "NO-GO"
+            }
