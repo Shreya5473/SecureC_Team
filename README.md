@@ -66,7 +66,7 @@ Unlike traditional WAFs that rely on static regex rules, SecureC uses:
               └─────────────────────────────────┘
 ```
 
-### 📊 Local ML Analytics (Technical Novelty)
+### 📊 Local ML Analytics 
 
 Our ML engine runs **entirely locally** with zero external API dependencies:
 
@@ -316,7 +316,7 @@ SecureC_Team/
 
 ---
 
-## 🏆 Technical Novelty
+## 🏆 Technical Features
 
 1. **Local ML Analytics** — Shannon entropy and keyword frequency analysis without external API dependencies
 2. **Multi-Agent Orchestration** — Specialized security agents with scoped permissions
@@ -324,11 +324,6 @@ SecureC_Team/
 4. **Defensive AI Parsing** — Graceful handling of malformed LLM responses
 5. **Immutable Signal Architecture** — ML signals are read-only, ensuring data integrity
 
----
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
