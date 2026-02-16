@@ -15,6 +15,14 @@
 
 ---
 
+# SecureC: AI-Powered WAF & SDLC Security
+> **Sentinel Backend + SecureC Frontend** - A comprehensive security platform for modern applications.
+
+## 🐳 Docker Deployment
+For containerized deployment instructions, see [DOCKER_INSTRUCTIONS.md](DOCKER_INSTRUCTIONS.md).
+
+## Project Overview
+
 ## 🚀 What is SecureC?
 
 **SecureC** is an **AI-native Web Application Firewall (WAF)** designed to protect AI systems from prompt injection attacks, data exfiltration, PII leakage, and agentic misbehavior.

@@ -11,6 +11,7 @@ import SocAlerts from './pages/SocAlerts';
 import ArtifactInput from './pages/ArtifactInput';
 import MLAnalytics from './pages/MLAnalytics';
 import AIWaf from './pages/AIWaf';
+import Community from './pages/Community';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/add-artifact" element={<ArtifactInput />} />
             <Route path="/ml-analytics" element={<MLAnalytics />} />
             <Route path="/ai-waf" element={<AIWaf />} />
+            <Route path="/community" element={<Community />} />
           </Routes>
         </Layout>
       </BrowserRouter>

@@ -10,6 +10,7 @@ import {
   FilePlus,
   Brain,
   Shield,
+  Users,
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -23,6 +24,7 @@ const Sidebar = () => {
     { to: '/soc-alerts', icon: Bell, label: 'SOC Alerts', badge: 3 },
     { to: '/risk-summary', icon: BarChart3, label: 'Risk Summary' },
     { to: '/remediation', icon: Wrench, label: 'Remediation' },
+    { to: '/community', icon: Users, label: 'Community' },
   ];
 
   return (

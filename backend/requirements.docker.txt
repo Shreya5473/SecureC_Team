@@ -1,0 +1,37 @@
+# Core web framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+python-multipart>=0.0.6
+
+# Async support
+httpx>=0.24.0
+anyio>=3.7.0
+
+# Database
+asyncpg>=0.28.0
+supabase>=2.0.0
+SQLAlchemy>=2.0.0
+
+# Configuration & Environment
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# AI & LLM
+openai>=1.0.0
+langchain>=0.1.0
+langchain-core>=0.1.0
+langgraph>=0.0.20
+
+# Data processing
+pdfplumber>=0.10.0
+pypdfium2>=4.0.0
+
+# Slack integration
+slack_sdk>=3.20.0
+
+# SSL/TLS
+certifi>=2023.0.0
+
+# Additional utilities
+typing_extensions>=4.7.0
